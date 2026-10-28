@@ -1,0 +1,16 @@
+# secrets
+.env
+
+# raw and processed data (too large for GitHub; anyone can re-download from CDC/CIHI)
+data/raw/
+data/processed/
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+
+# Power BI temp/lock files
+~$*.pbix
+*.pbix.bak
