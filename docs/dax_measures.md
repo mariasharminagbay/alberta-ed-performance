@@ -263,3 +263,151 @@ Also: `P90 Visit Change since 2018 %` for 2022 = **23.0%**; `Median Visit Change
 
 CIHI, Alberta vs Canada (hours): urgent discharged median 4.1 vs 4.1, P90 10.2 vs 10.2;
 less urgent discharged median 2.4 vs 2.7, P90 6.3 vs 7.8; admitted median 13.2 vs 15.5, P90 42.3 vs 46.5.
+
+## Phase 8 measures (report pages)
+
+Add these to `_Measures` the same way. Expected values follow at the end of this section.
+
+```dax
+Triage Unknown % =
+DIVIDE (
+    CALCULATE ( [Visits], dim_triage[triage_group] = "Unknown" ),
+    CALCULATE ( [Visits], ALL ( dim_triage ) )
+)
+```
+
+```dax
+Ambulance % =
+DIVIDE (
+    CALCULATE ( [Visits], dim_arrival_mode[arrival_mode] = "Ambulance" ),
+    CALCULATE ( [Visits], ALL ( dim_arrival_mode ) )
+)
+```
+
+```dax
+Boarding Missing % =
+DIVIDE (
+    CALCULATE ( [Visits], dim_outcome[outcome] = "Admitted", ISBLANK ( fact_ed_visit[boarded_min] ) ),
+    CALCULATE ( [Visits], dim_outcome[outcome] = "Admitted" )
+)
+```
+Share of admitted visits with no boarding time recorded.
+
+Format all three: Percentage, 1 decimal place (`0.0%`)
+
+`Median Boarding (min)` stays on the Model check page only. 35-46% of recorded boarding times are
+exactly 0, so that median jumps around. The report uses this one instead, and the Data quality page explains why.
+
+```dax
+Median Boarding above 0 (min) =
+VAR Minutes =
+    CALCULATETABLE (
+        ADDCOLUMNS (
+            FILTER (
+                VALUES ( fact_ed_visit[boarded_min] ),
+                NOT ISBLANK ( fact_ed_visit[boarded_min] ) && fact_ed_visit[boarded_min] > 0
+            ),
+            "@Weight", CALCULATE ( SUM ( fact_ed_visit[weight] ) )
+        ),
+        KEEPFILTERS ( dim_outcome[outcome] = "Admitted" )
+    )
+VAR Target = 0.5 * SUMX ( Minutes, [@Weight] )
+VAR Running =
+    ADDCOLUMNS (
+        Minutes,
+        "@RunningWeight",
+            VAR ThisMinute = fact_ed_visit[boarded_min]
+            RETURN SUMX ( FILTER ( Minutes, fact_ed_visit[boarded_min] <= ThisMinute ), [@Weight] )
+    )
+RETURN
+    MINX ( FILTER ( Running, [@RunningWeight] >= Target ), fact_ed_visit[boarded_min] )
+```
+Format: Whole number, 0 decimal places (`0`)
+
+```dax
+Low Sample Flag =
+IF ( NOT ISBLANK ( [Sample Visits] ) && [Sample Visits] < 30, 1, 0 )
+```
+Format: Whole number. Returns 1 when fewer than 30 sampled records sit behind a figure; used for conditional formatting.
+
+```dax
+CIHI Bar Colour =
+SWITCH (
+    SELECTEDVALUE ( cihi_ed_los[province_code] ),
+    "Alta.", "#1F6FB2",
+    "Total", "#5B5B5B",
+    "#B8C4CE"
+)
+```
+Text: no number format. Colours each province bar: Alberta blue, Canada dark grey, other provinces light grey.
+
+### Expected values: new measures
+
+| Year | Triage Unknown % | Boarding Missing % | Median Boarding above 0 (min) | Ambulance % |
+| --- | --- | --- | --- | --- |
+| 2018 | 22.7% | 29.0% | 83 | 16.0% |
+| 2019 | 22.5% | 28.9% | 101 | 15.5% |
+| 2020 | 30.1% | 26.9% | 116 | 19.7% |
+| 2021 | 23.1% | 20.7% | 132 | 17.6% |
+| 2022 | 25.8% | 21.2% | 141 | 17.0% |
+| All years | 24.8% | 25.2% | 114 | 17.1% |
+
+### Expected values: page 2, P90 Visit (min), all years
+
+| Group | P90 Visit | Median Visit | Sample visits |
+| --- | --- | --- | --- |
+| Age 65+ | 571 | 233 | 16,127 |
+| Age 45-64 | 515 | 200 | 20,107 |
+| Age 20-44 | 428 | 168 | 29,793 |
+| Age 0-19 | 341 | 136 | 20,837 |
+| Ambulance | 712 | 249 | 14,983 |
+| Walk-in or other | 413 | 165 | 68,984 |
+| Arrival unknown | 516 | 184 | 2,897 |
+| Medicare | 552 | 224 | 17,139 |
+| Payer unknown | 499 | 187 | 9,554 |
+| Other payer | 435 | 168 | 2,463 |
+| Medicaid / CHIP | 432 | 159 | 30,039 |
+| Private insurance | 422 | 175 | 21,412 |
+| Self-pay or no charge | 386 | 155 | 6,257 |
+| Northeast | 560 | 213 | 18,502 |
+| West | 476 | 190 | 19,262 |
+| Midwest | 445 | 168 | 20,830 |
+| South | 413 | 165 | 28,270 |
+| Metro | 476 | 185 | 75,881 |
+| Non-metro | 336 | 140 | 10,983 |
+| Triage 1 - Immediate | 827 | 214 | 846 |
+| Triage 2 - Emergent | 741 | 262 | 8,597 |
+| Triage 3 - Urgent | 463 | 208 | 29,568 |
+| Triage 4 - Semi-urgent | 280 | 117 | 16,715 |
+| Triage 5 - Nonurgent | 294 | 96 | 2,398 |
+| No triage | 425 | 165 | 6,476 |
+| Triage unknown | 497 | 175 | 22,264 |
+
+No group falls below 30 sampled visits even when split by single year (smallest: Other payer in 2020, 330).
+
+### Expected values: page 3, outcome mix (% of visits)
+
+| Year | Discharged or other | Admitted | Left against medical advice | Left without being seen |
+| --- | --- | --- | --- | --- |
+| 2018 | 85.7% | 12.4% | 0.7% | 1.2% |
+| 2019 | 86.6% | 11.2% | 0.9% | 1.3% |
+| 2020 | 83.7% | 14.1% | 1.2% | 1.0% |
+| 2021 | 84.2% | 13.1% | 1.0% | 1.7% |
+| 2022 | 85.4% | 11.5% | 1.2% | 1.9% |
+
+### Expected values: page 5, wait by triage level (all years, from `vw_triage_wait`)
+
+| Triage group | Median Wait (min) | P90 Wait (min) |
+| --- | --- | --- |
+| 1 - Immediate | 10 | 65 |
+| 2 - Emergent | 11 | 64 |
+| 3 - Urgent | 14 | 89 |
+| 4 - Semi-urgent | 15 | 83 |
+| 5 - Nonurgent | 16 | 82 |
+| No triage | 17 | 105 |
+| Unknown | 16 | 98 |
+
+### Expected values: drill-through, share of visits by reason module (all years)
+
+Symptom 75.4%, Injury or adverse effect 14.4%, Disease 5.1%, Treatment 1.8%,
+Diagnostic/screening/preventive 1.6%, Test results 0.8%, Blank 0.5%, Uncodable 0.4%, Administrative 0.2%.
