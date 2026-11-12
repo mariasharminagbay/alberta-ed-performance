@@ -341,6 +341,22 @@ SWITCH (
 ```
 Text: no number format. Colours each province bar: Alberta blue, Canada dark grey, other provinces light grey.
 
+```dax
+Selected Group =
+SWITCH (
+    TRUE (),
+    ISFILTERED ( dim_age_group[age_group] ), "Age " & SELECTEDVALUE ( dim_age_group[age_group] ),
+    ISFILTERED ( dim_arrival_mode[arrival_mode] ), "Arrival: " & SELECTEDVALUE ( dim_arrival_mode[arrival_mode] ),
+    ISFILTERED ( dim_payer[payer_group] ), "Payer: " & SELECTEDVALUE ( dim_payer[payer_group] ),
+    ISFILTERED ( dim_region[region] ), "Region: " & SELECTEDVALUE ( dim_region[region] ),
+    ISFILTERED ( dim_metro[metro_status] ), SELECTEDVALUE ( dim_metro[metro_status] ),
+    ISFILTERED ( dim_triage[triage_group] ), "Triage: " & SELECTEDVALUE ( dim_triage[triage_group] ),
+    "All visits (no group selected)"
+)
+```
+Text: no number format. Used on the Visit detail drill-through page to name the group the reader drilled into
+(for example, right-clicking the Ambulance bar on page 2 shows "Arrival: Ambulance").
+
 ### Expected values: new measures
 
 | Year | Triage Unknown % | Boarding Missing % | Median Boarding above 0 (min) | Ambulance % |
@@ -411,3 +427,10 @@ No group falls below 30 sampled visits even when split by single year (smallest:
 
 Symptom 75.4%, Injury or adverse effect 14.4%, Disease 5.1%, Treatment 1.8%,
 Diagnostic/screening/preventive 1.6%, Test results 0.8%, Blank 0.5%, Uncodable 0.4%, Administrative 0.2%.
+
+### Expected values: drill-through tests (all years)
+
+| Drilled from | Selected Group | P90 Visit | Median Visit | Sample Visits | Sample Size Check |
+| --- | --- | --- | --- | --- | --- |
+| Ambulance bar | Arrival: Ambulance | 712 | 249 | 14,983 | OK |
+| 65+ bar | Age 65+ | 571 | 233 | 16,127 | OK |
